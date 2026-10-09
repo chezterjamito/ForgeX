@@ -30,6 +30,16 @@ try {
 } catch (PDOException $e) {
     error_log('Registration database error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(["error" => "Registration failed. Check the Render service logs and database schema."]);
+    echo json_encode([
+        "error" => "Registration failed",
+        "details" => $e->getMessage()
+    ]);
+} catch (Throwable $e) {
+    error_log('Registration server error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        "error" => "Registration failed",
+        "details" => $e->getMessage()
+    ]);
 }
 ?>

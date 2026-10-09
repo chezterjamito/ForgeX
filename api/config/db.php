@@ -12,6 +12,9 @@ try {
     http_response_code(500);
     header("Content-Type: application/json");
     error_log('Database connection failed: ' . $e->getMessage());
-    echo json_encode(["error" => "Database connection failed"]);
+    echo json_encode([
+        "error" => "Database connection failed",
+        "details" => $e->getMessage()
+    ]);
     exit;
 }

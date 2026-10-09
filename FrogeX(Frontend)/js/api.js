@@ -20,7 +20,11 @@ async function apiFetch(endpoint, method = "GET", body = null) {
   } catch (e) {
     throw new Error("Server did not return valid JSON. Check the PHP file for errors.");
   }
-  if (!res.ok) throw new Error(json.error || "Request failed");
+  if (!res.ok) {
+    const message = json.error || "Request failed";
+    const details = json.details ? `: ${json.details}` : "";
+    throw new Error(message + details);
+  }
   return json;
 }
 
