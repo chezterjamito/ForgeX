@@ -7,6 +7,7 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT 0,
+    bio VARCHAR(255) NULL,
     is_public BOOLEAN DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

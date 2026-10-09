@@ -114,7 +114,12 @@
       }
     });
 
-    loadProfile();
+    loadProfile().catch((err) => {
+      document.getElementById("profileUsername").textContent = "Profile could not be loaded";
+      document.getElementById("powerSection").textContent = err.message;
+      document.getElementById("message").textContent = err.message;
+      document.getElementById("message").className = "error";
+    });
   </script>
 </body>
 
