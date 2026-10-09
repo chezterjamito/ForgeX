@@ -1,0 +1,386 @@
+/* ============================================================
+   FORGEX — retro arcade / pixel-art design system
+   Fonts: Press Start 2P (display/UI) + VT323 (body/readable)
+   Rule: zero border-radius, 3px solid outlines, hard offset
+   shadows (no blur) — every surface reads as a game panel.
+   ============================================================ */
+
+:root {
+  /* base */
+  --bg: #0b0618;
+  --panel: #1b1030;
+  --panel-alt: #241542;
+  --ink: #050109;
+  --border: #3a2a5c;
+
+  /* accents */
+  --gold: #ffd23f;
+  --gold-dim: #c9a02c;
+  --cyan: #2fe6d1;
+  --cyan-dim: #1fa89a;
+  --magenta: #ff3ea5;
+  --green: #57e389;
+  --orange: #ff9f43;
+  --red: #ff4d4d;
+
+  --text: #f4f1ff;
+  --muted: #9d8fc7;
+
+  --font-display: 'Press Start 2P', monospace;
+  --font-body: 'VT323', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  position: relative;
+}
+
+/* faint CRT scanlines over the whole app — one texture, applied once */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* slow-drifting pixel starfield behind the whole app */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -50px;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle, rgba(47,230,209,0.25) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(255,210,63,0.18) 1.5px, transparent 1.5px);
+  background-size: 46px 46px, 70px 70px;
+  background-position: 0 0, 23px 23px;
+  animation: starDrift 90s linear infinite;
+}
+
+@keyframes starDrift {
+  from { background-position: 0 0, 23px 23px; }
+  to   { background-position: 460px 460px, 493px 493px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+}
+
+/* ---- Nav / HUD bar ---- */
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 28px;
+  background: var(--panel);
+  border-bottom: 4px solid var(--ink);
+  box-shadow: 0 4px 0 var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+nav .logo {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+nav a {
+  color: var(--cyan);
+  text-decoration: none;
+  margin-left: 18px;
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+}
+nav a:hover { color: var(--gold); }
+
+/* ---- Layout ---- */
+.container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.card {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--border);
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+h1, h2, h3 {
+  margin-top: 0;
+  font-family: var(--font-display);
+  line-height: 1.6;
+  letter-spacing: 0.5px;
+}
+h1 { font-size: clamp(1.2rem, 3.6vw, 1.9rem); }
+h2 { font-size: clamp(1rem, 3vw, 1.3rem); }
+h3 { font-size: 0.85rem; }
+
+p { font-size: 1.2rem; }
+
+/* ---- Hero ---- */
+.hero {
+  text-align: center;
+  padding: 70px 20px 50px;
+  border-bottom: 4px solid var(--ink);
+}
+.hero h1 { color: var(--gold); text-shadow: 3px 3px 0 var(--ink); margin-bottom: 18px; }
+.hero p { color: var(--muted); font-size: 1.35rem; max-width: 520px; margin: 0 auto 28px; }
+
+/* ---- Buttons (pressable pixel buttons) ---- */
+.btn {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  padding: 12px 22px;
+  border: 3px solid var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.05s linear, box-shadow 0.05s linear;
+}
+
+/* one-shot diagonal shine sweep on hover — plays once, not looped */
+.btn:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.45s ease;
+  pointer-events: none;
+}
+.btn:not(:disabled):hover::after { left: 130%; }
+
+/* power-up glow pulse while hovered — stops the instant the pointer leaves */
+.btn:not(:disabled):hover { animation: btnGlowGold 1s ease-in-out infinite; }
+@keyframes btnGlowGold {
+  0%, 100% { box-shadow: 4px 4px 0 var(--ink), 0 0 0 rgba(255,210,63,0); }
+  50%      { box-shadow: 4px 4px 0 var(--ink), 0 0 14px rgba(255,210,63,0.65); }
+}
+
+.btn:hover { background: #ffe27a; }
+.btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); animation: none; }
+.btn:disabled {
+  background: #3a3357;
+  color: var(--muted);
+  cursor: not-allowed;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: none;
+  opacity: 0.8;
+}
+
+.btn.secondary {
+  background: transparent;
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 4px 4px 0 var(--cyan-dim);
+}
+.btn.secondary:hover { background: rgba(47,230,209,0.1); animation: btnGlowCyan 1s ease-in-out infinite; }
+@keyframes btnGlowCyan {
+  0%, 100% { box-shadow: 4px 4px 0 var(--cyan-dim), 0 0 0 rgba(47,230,209,0); }
+  50%      { box-shadow: 4px 4px 0 var(--cyan-dim), 0 0 14px rgba(47,230,209,0.65); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover, .btn.secondary:hover { animation: none; }
+  .btn:not(:disabled)::after { transition: none; }
+}
+
+.btn-small { padding: 6px 12px; font-size: 0.55rem; box-shadow: 3px 3px 0 var(--ink); }
+.btn-danger { background: var(--red); }
+.btn-danger:hover { background: #ff7373; }
+
+/* ---- Forms ---- */
+form { display: flex; flex-direction: column; gap: 14px; }
+
+input, select, textarea {
+  padding: 11px 12px;
+  border: 3px solid var(--ink);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+
+h5 { font-family: var(--font-body); font-weight: normal; font-size: 1.1rem; color: var(--muted); }
+h5 a { color: var(--cyan); }
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  background: var(--cyan);
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.badge-beginner { background: var(--green); }
+.badge-intermediate { background: var(--cyan); }
+.badge-advanced { background: var(--orange); }
+.badge-master { background: var(--red); color: var(--text); }
+
+/* ---- XP / progress bar (RPG health-bar style) ---- */
+.progress-bar {
+  background: var(--panel-alt);
+  border: 2px solid var(--ink);
+  height: 16px;
+  margin-top: 10px;
+  padding: 2px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--gold) 0px, var(--gold) 8px,
+    var(--gold-dim) 8px, var(--gold-dim) 10px
+  );
+}
+
+/* ---- Tables ---- */
+table { width: 100%; border-collapse: collapse; font-size: 1.1rem; }
+th, td { text-align: left; padding: 10px; border-bottom: 2px solid var(--border); }
+th { color: var(--cyan); font-weight: normal; font-family: var(--font-display); font-size: 0.55rem; text-transform: uppercase; }
+
+/* ---- Status text ---- */
+.error { color: var(--red); font-size: 1.1rem; }
+.success { color: var(--green); font-size: 1.1rem; }
+.muted { color: var(--muted); font-size: 1.1rem; }
+
+/* ---- Homepage feature grid & stats ---- */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+  margin: 26px 0;
+}
+.feature-grid .card { margin-bottom: 0; }
+.feature-grid h3 { color: var(--gold); }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  text-align: center;
+  margin: 26px 0;
+}
+.stat-box {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--border);
+  padding: 20px;
+}
+.stat-box .stat-num {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+/* ---- Profile page ---- */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.avatar-circle {
+  width: 64px;
+  height: 64px;
+  border: 3px solid var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.stat-pill {
+  display: inline-block;
+  background: var(--panel-alt);
+  border: 2px solid var(--ink);
+  padding: 6px 14px;
+  font-size: 1.05rem;
+  margin-right: 8px;
+}
+
+/* ---- Toggle switch (pixel style) ---- */
+.toggle-row { display: flex; align-items: center; gap: 10px; }
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background-color: var(--panel-alt);
+  border: 2px solid var(--ink);
+  transition: 0.15s;
+}
+.slider::before {
+  position: absolute; content: "";
+  height: 16px; width: 16px;
+  left: 3px; top: 3px;
+  background-color: var(--muted);
+  transition: 0.15s;
+}
+.switch input:checked + .slider { background: var(--panel-alt); border-color: var(--green); }
+.switch input:checked + .slider::before { transform: translateX(20px); background: var(--green); }
+
+/* ---- Admin tabs & tables ---- */
+.admin-tabs { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+.admin-tab {
+  padding: 10px 16px;
+  border: 3px solid var(--ink);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  box-shadow: 3px 3px 0 var(--border);
+}
+.admin-tab.active { background: var(--gold); color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.admin-panel { display: none; }
+.admin-panel.active { display: block; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid textarea, .form-grid .full-width { grid-column: 1 / -1; }
+.locked-note { font-size: 1rem; color: var(--orange); margin-top: 8px; }

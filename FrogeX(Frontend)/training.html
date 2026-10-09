@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Training</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ============================================================
+     Skill-tree layout
+     ============================================================ */
+    .tree-wrap {
+      overflow-x: auto;
+      padding-bottom: 14px;
+      margin-top: 10px;
+    }
+
+    .tree-canvas {
+      position: relative;
+      display: inline-block;
+      min-width: 100%;
+    }
+
+    .tree-columns {
+      display: flex;
+      gap: 70px;
+      padding: 16px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tree-lines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+
+    .tree-line {
+      fill: none;
+      stroke: var(--cyan-dim);
+      stroke-width: 2.5;
+    }
+
+    .tree-line-locked {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 2;
+      stroke-dasharray: 5 5;
+    }
+
+    .tree-col {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      align-items: stretch;
+      width: 190px;
+      flex-shrink: 0;
+    }
+
+    .tree-col-label {
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-align: center;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .tree-node {
+      background: var(--panel);
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 var(--border);
+      padding: 14px;
+      position: relative;
+    }
+
+    .tree-node.tn-completed {
+      box-shadow: 4px 4px 0 var(--green);
+    }
+
+    .tree-node.tn-locked {
+      opacity: 0.55;
+    }
+
+    .tn-badge-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .tn-check {
+      color: var(--green);
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+    }
+
+    .tn-title {
+      font-family: var(--font-body);
+      font-size: 1.2rem;
+      color: var(--gold);
+      margin: 0 0 6px;
+      line-height: 1.25;
+    }
+
+    .tn-xp {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+
+    /* ============================================================
+     Mini-game modal (scoped to training.html)
+     ============================================================ */
+    .mg-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 1, 9, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .mg-box {
+      background: var(--panel);
+      border: 3px solid var(--ink);
+      box-shadow: 6px 6px 0 var(--border);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .mg-box h3 {
+      color: var(--gold);
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .mg-box p {
+      font-size: 1.1rem;
+      color: var(--muted);
+    }
+
+    .mg-close {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      cursor: pointer;
+    }
+
+    .mg-close:hover {
+      color: var(--red);
+    }
+
+    .mg-stage {
+      text-align: center;
+      margin-top: 14px;
+      clear: both;
+    }
+
+    .mg-reaction-pad {
+      width: 100%;
+      height: 180px;
+      border: 3px solid var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s;
+    }
+
+    .mg-reaction-pad.wait {
+      background: var(--panel-alt);
+      color: var(--muted);
+    }
+
+    .mg-reaction-pad.go {
+      background: var(--green);
+      color: var(--ink);
+    }
+
+    .mg-reaction-pad.early {
+      background: var(--red);
+      color: var(--text);
+    }
+
+    .mg-memory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-width: 260px;
+      margin: 0 auto;
+    }
+
+    .mg-tile {
+      height: 90px;
+      border: 3px solid var(--ink);
+      cursor: pointer;
+      opacity: 0.55;
+      transition: opacity 0.1s, transform 0.05s;
+    }
+
+    .mg-tile:active {
+      transform: scale(0.96);
+    }
+
+    .mg-tile.lit {
+      opacity: 1;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    .mg-tile[data-idx="0"] {
+      background: var(--gold);
+      color: var(--gold);
+    }
+
+    .mg-tile[data-idx="1"] {
+      background: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .mg-tile[data-idx="2"] {
+      background: var(--magenta);
+      color: var(--magenta);
+    }
+
+    .mg-tile[data-idx="3"] {
+      background: var(--green);
+      color: var(--green);
+    }
+
+    .mg-spark-track {
+      position: relative;
+      height: 54px;
+      border: 3px solid var(--ink);
+      background: var(--panel-alt);
+      margin: 14px 0;
+      overflow: hidden;
+    }
+
+    .mg-spark-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: rgba(87, 227, 137, 0.3);
+      border-left: 2px dashed var(--green);
+      border-right: 2px dashed var(--green);
+    }
+
+    .mg-spark-orb {
+      position: absolute;
+      top: 6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 0 10px var(--orange);
+      transform: translateX(-50%);
+    }
+
+    .mg-round-info {
+      font-size: 1.05rem;
+      color: var(--cyan);
+      margin-top: 8px;
+    }
+
+    .mg-result-pass {
+      color: var(--green);
+    }
+
+    .mg-result-fail {
+      color: var(--red);
+    }
+
+    .mg-score-bar {
+      background: var(--panel-alt);
+      border: 2px solid var(--ink);
+      height: 14px;
+      margin: 10px 0;
+    }
+
+    .mg-score-fill {
+      height: 100%;
+      background: var(--gold);
+    }
+
+    .mg-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* ============================================================
+     Level-up / XP celebration
+     ============================================================ */
+    .cel-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 1, 9, 0.55);
+      cursor: pointer;
+    }
+
+    .cel-burst {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+    }
+
+    .cel-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      left: 0;
+      top: 0;
+      animation: celParticle 0.9s ease-out forwards;
+    }
+
+    @keyframes celParticle {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.2);
+        opacity: 0;
+      }
+    }
+
+    .cel-content {
+      text-align: center;
+      position: relative;
+    }
+
+    .cel-levelup {
+      font-family: var(--font-display);
+      font-size: clamp(1.4rem, 6vw, 2.4rem);
+      color: var(--gold);
+      text-shadow: 4px 4px 0 var(--ink);
+      animation: celPunch 0.5s cubic-bezier(.17, .89, .32, 1.49) both;
+    }
+
+    .cel-level-num {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 4vw, 1.6rem);
+      color: var(--cyan);
+      margin-top: 10px;
+      text-shadow: 3px 3px 0 var(--ink);
+      animation: celPunch 0.5s 0.12s cubic-bezier(.17, .89, .32, 1.49) both;
+    }
+
+    .cel-xp {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--green);
+      margin-top: 16px;
+      animation: celFadeUp 0.5s 0.22s both;
+    }
+
+    @keyframes celPunch {
+      0% {
+        transform: scale(0) rotate(-8deg);
+        opacity: 0;
+      }
+
+      60% {
+        transform: scale(1.25) rotate(3deg);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes celFadeUp {
+      0% {
+        transform: translateY(14px);
+        opacity: 0;
+      }
+
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes celShake {
+
+      0%,
+      100% {
+        transform: translate(0, 0);
+      }
+
+      20% {
+        transform: translate(-6px, 4px);
+      }
+
+      40% {
+        transform: translate(6px, -4px);
+      }
+
+      60% {
+        transform: translate(-4px, -6px);
+      }
+
+      80% {
+        transform: translate(4px, 6px);
+      }
+    }
+
+    .cel-content.cel-shake {
+      animation: celShake 0.4s linear;
+    }
+
+    body.cel-page-shake {
+      animation: celShake 0.4s linear;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .cel-particle,
+      .cel-levelup,
+      .cel-level-num,
+      .cel-xp,
+      .cel-content.cel-shake,
+      body.cel-page-shake {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="training.html">Training</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="report.html">Report Incident</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>Training Center</h2>
+    <p class="muted" id="levelSummary"></p>
+
+    <h3>Standard Training</h3>
+    <div class="tree-wrap" id="standardTreeWrap">
+      <div class="tree-canvas" id="standardCanvas">
+        <svg class="tree-lines" id="standardLines"></svg>
+        <div class="tree-columns" id="standardColumns">Loading modules...</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:30px;">🔥 Hard Training <span class="muted" style="font-size:0.8rem;">(advanced &amp; master
+        tier — big XP)</span></h3>
+    <div class="tree-wrap" id="hardTreeWrap">
+      <div class="tree-canvas" id="hardCanvas">
+        <svg class="tree-lines" id="hardLines"></svg>
+        <div class="tree-columns" id="hardColumns"></div>
+      </div>
+    </div>
+    <p class="locked-note" id="hardLockedNote" style="display:none;"></p>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    requireLogin();
+    showAdminLinkIfAdmin();
+
+    const HARD_TIER_UNLOCK_LEVEL = 2; // must be at least this level to attempt advanced/master modules
+    const PASS_THRESHOLD = 0.4; // mirrors the server-side pass threshold, for the preview only
+
+    // Which mini-game a power category plays
+    const CATEGORY_GAME = {
+      physical: 'reaction',
+      social: 'reaction',
+      mental: 'memory',
+      reality: 'memory',
+      elemental: 'spark',
+      bizarre: 'spark'
+    };
+
+    // Difficulty scales the challenge, not just the label
+    const DIFFICULTY_PARAMS = {
+      beginner: { reactionWindow: 1000, reactionRounds: 3, memoryLength: 3, memoryRounds: 3, sparkSpeed: 2600, sparkZone: 70, sparkRounds: 4 },
+      intermediate: { reactionWindow: 850, reactionRounds: 3, memoryLength: 4, memoryRounds: 3, sparkSpeed: 2100, sparkZone: 56, sparkRounds: 4 },
+      advanced: { reactionWindow: 700, reactionRounds: 4, memoryLength: 5, memoryRounds: 4, sparkSpeed: 1700, sparkZone: 42, sparkRounds: 5 },
+      master: { reactionWindow: 550, reactionRounds: 4, memoryLength: 6, memoryRounds: 4, sparkSpeed: 1300, sparkZone: 30, sparkRounds: 5 }
+    };
+
+    const GAME_INFO = {
+      reaction: { label: 'Reflex Trial', instructions: 'Wait for the pad to flash GREEN, then click it as fast as you can. Click too early and the round is wasted.' },
+      memory: { label: 'Mind Pattern', instructions: 'Watch the tiles light up in sequence, then repeat the pattern by clicking the tiles in the same order.' },
+      spark: { label: 'Spark Catch', instructions: 'An unstable spark is bouncing along the track. Hit CATCH the instant it crosses the glowing zone.' }
+    };
+
+    let currentModulesById = {};
+    let currentPowerLevel = 0;
+    let activeCleanup = null;
+    let lastTreeRenders = [];
+    let resizeTimer = null;
+
+    // ---------------------------------------------------------------
+    // Skill tree rendering
+    // ---------------------------------------------------------------
+
+    function treeNode(m, locked) {
+      const badgeClass = "badge-" + m.difficulty;
+      const completed = m.status === 'completed';
+      const disabled = completed || locked;
+      let buttonLabel = completed ? 'Completed' : '⚡ Start';
+      if (locked) buttonLabel = 'Locked';
+
+      return `
+        <div class="tree-node ${completed ? 'tn-completed' : ''} ${locked ? 'tn-locked' : ''}">
+          <div class="tn-badge-row">
+            <span class="badge ${badgeClass}">${m.difficulty}</span>
+            ${completed ? '<span class="tn-check">✓</span>' : ''}
+          </div>
+          <h4 class="tn-title">${m.title}</h4>
+          <p class="tn-xp">⚡ up to ${m.xp_reward} XP</p>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:${m.progress_percent}%"></div></div>
+          <button class="btn btn-small" style="margin-top:8px;width:100%;" onclick="openChallenge(${m.module_id})" ${disabled ? 'disabled' : ''}>
+            ${buttonLabel}
+          </button>
+        </div>
+      `;
+    }
+
+    function renderTree(canvasId, colsId, linesId, tiers, emptyMessage) {
+      const nonEmptyTiers = tiers.filter(t => t.modules.length > 0);
+      const canvasEl = document.getElementById(canvasId);
+      const colsEl = document.getElementById(colsId);
+      const linesEl = document.getElementById(linesId);
+
+      if (nonEmptyTiers.length === 0) {
+        colsEl.innerHTML = `<p class="muted">${emptyMessage}</p>`;
+        linesEl.innerHTML = '';
+        return null;
+      }
+
+      colsEl.innerHTML = nonEmptyTiers.map(tier => `
+        <div class="tree-col" data-tier="${tier.key}">
+          <div class="tree-col-label">${tier.label}</div>
+          ${tier.modules.map(m => treeNode(m, tier.locked)).join('')}
+        </div>
+      `).join('');
+
+      requestAnimationFrame(() => drawTreeLines(canvasEl, colsEl, linesEl, nonEmptyTiers));
+      return { canvasEl, colsEl, linesEl, tiers: nonEmptyTiers };
+    }
+
+    function drawTreeLines(canvasEl, colsEl, linesEl, tiers) {
+      const canvasRect = canvasEl.getBoundingClientRect();
+      linesEl.setAttribute('width', canvasEl.scrollWidth);
+      linesEl.setAttribute('height', canvasEl.scrollHeight);
+      linesEl.innerHTML = '';
+
+      const colEls = Array.from(colsEl.querySelectorAll('.tree-col'));
+      const nodesByCol = colEls.map(col => Array.from(col.querySelectorAll('.tree-node')));
+
+      for (let i = 0; i < nodesByCol.length - 1; i++) {
+        const fromNodes = nodesByCol[i];
+        const toNodes = nodesByCol[i + 1];
+        const toLocked = tiers[i + 1].locked;
+
+        fromNodes.forEach(fromEl => {
+          const fromRect = fromEl.getBoundingClientRect();
+          const x1 = fromRect.right - canvasRect.left;
+          const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+
+          toNodes.forEach(toEl => {
+            const toRect = toEl.getBoundingClientRect();
+            const x2 = toRect.left - canvasRect.left;
+            const y2 = toRect.top + toRect.height / 2 - canvasRect.top;
+            const midX = (x1 + x2) / 2;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+            path.setAttribute('class', toLocked ? 'tree-line-locked' : 'tree-line');
+            linesEl.appendChild(path);
+          });
+        });
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        lastTreeRenders.forEach(r => { if (r) drawTreeLines(r.canvasEl, r.colsEl, r.linesEl, r.tiers); });
+      }, 150);
+    });
+
+    // ---------------------------------------------------------------
+    // Data loading
+    // ---------------------------------------------------------------
+
+    async function loadModules() {
+      const power = await apiFetch("/powers/get_my_power.php");
+      const prog = xpProgress(power.xp);
+      currentPowerLevel = prog.level;
+      document.getElementById("levelSummary").textContent =
+        `Training as ${power.power_name} — Level ${prog.level} (${power.xp} XP)`;
+
+      const modules = await apiFetch("/training/get_modules.php?power_id=" + power.power_id);
+      currentModulesById = {};
+      modules.forEach(m => { currentModulesById[m.module_id] = m; });
+
+      const hardLocked = prog.level < HARD_TIER_UNLOCK_LEVEL;
+
+      const standardTiers = [
+        { key: 'beginner', label: 'Beginner', locked: false, modules: modules.filter(m => m.difficulty === 'beginner') },
+        { key: 'intermediate', label: 'Intermediate', locked: false, modules: modules.filter(m => m.difficulty === 'intermediate') }
+      ];
+      const hardTiers = [
+        { key: 'advanced', label: 'Advanced', locked: hardLocked, modules: modules.filter(m => m.difficulty === 'advanced') },
+        { key: 'master', label: 'Master', locked: hardLocked, modules: modules.filter(m => m.difficulty === 'master') }
+      ];
+
+      const standardRender = renderTree('standardCanvas', 'standardColumns', 'standardLines', standardTiers,
+        'No standard modules for your power yet.');
+      const hardRender = renderTree('hardCanvas', 'hardColumns', 'hardLines', hardTiers,
+        'No hard training modules for your power yet.');
+      lastTreeRenders = [standardRender, hardRender];
+
+      const hardModuleCount = hardTiers[0].modules.length + hardTiers[1].modules.length;
+      const noteEl = document.getElementById('hardLockedNote');
+      if (hardModuleCount > 0 && hardLocked) {
+        noteEl.textContent = `Hard Training unlocks at level ${HARD_TIER_UNLOCK_LEVEL}. Complete standard modules to level up.`;
+        noteEl.style.display = 'block';
+      } else {
+        noteEl.style.display = 'none';
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Modal shell
+    // ---------------------------------------------------------------
+
+    function closeMinigameModal() {
+      if (activeCleanup) { activeCleanup(); activeCleanup = null; }
+      const overlay = document.getElementById('mgOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    function openChallenge(moduleId) {
+      const m = currentModulesById[moduleId];
+      if (!m) return;
+      startChallenge(m);
+    }
+
+    function startChallenge(module) {
+      closeMinigameModal();
+      const gameType = CATEGORY_GAME[module.category] || 'reaction';
+      const params = DIFFICULTY_PARAMS[module.difficulty] || DIFFICULTY_PARAMS.beginner;
+      const info = GAME_INFO[gameType];
+
+      const overlay = document.createElement('div');
+      overlay.className = 'mg-overlay';
+      overlay.id = 'mgOverlay';
+      overlay.innerHTML = `
+        <div class="mg-box">
+          <button type="button" class="mg-close" id="mgCloseBtn">✕ CLOSE</button>
+          <h3>${info.label}: ${module.title}</h3>
+          <div id="mgIntro">
+            <p>${info.instructions}</p>
+            <p class="muted">Difficulty: ${module.difficulty} — Base reward: ${module.xp_reward} XP</p>
+            <p class="muted">Pass the challenge to earn XP. Your performance sets the payout.</p>
+            <div class="mg-actions">
+              <button type="button" class="btn" id="mgStartBtn">BEGIN CHALLENGE</button>
+            </div>
+          </div>
+          <div class="mg-stage" id="mgStage" style="display:none;"></div>
+          <div id="mgResult" style="display:none;"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      document.getElementById('mgCloseBtn').onclick = closeMinigameModal;
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeMinigameModal(); });
+
+      document.getElementById('mgStartBtn').onclick = () => {
+        document.getElementById('mgIntro').style.display = 'none';
+        const stage = document.getElementById('mgStage');
+        stage.style.display = 'block';
+        launchGame(gameType, module, params, stage);
+      };
+    }
+
+    function launchGame(gameType, module, params, stage) {
+      stage.innerHTML = '';
+      const onComplete = (perfScore) => showResult(module, gameType, params, perfScore);
+      if (gameType === 'reaction') activeCleanup = runReactionGame(params, stage, onComplete);
+      else if (gameType === 'memory') activeCleanup = runMemoryGame(params, stage, onComplete);
+      else activeCleanup = runSparkGame(params, stage, onComplete);
+    }
+
+    function showResult(module, gameType, params, perfScore) {
+      if (activeCleanup) { activeCleanup(); activeCleanup = null; }
+      const stage = document.getElementById('mgStage');
+      const resultEl = document.getElementById('mgResult');
+      if (!stage || !resultEl) return;
+      stage.style.display = 'none';
+      resultEl.style.display = 'block';
+
+      const passed = perfScore >= PASS_THRESHOLD;
+      const pct = Math.round(perfScore * 100);
+      const previewMultiplier = 0.5 + 0.5 * perfScore;
+      const previewXp = Math.round(module.xp_reward * previewMultiplier);
+
+      resultEl.innerHTML = `
+        <h3 class="${passed ? 'mg-result-pass' : 'mg-result-fail'}">${passed ? 'CHALLENGE PASSED' : 'CHALLENGE FAILED'}</h3>
+        <p>Performance: ${pct}%</p>
+        <div class="mg-score-bar"><div class="mg-score-fill" style="width:${pct}%;"></div></div>
+        ${passed
+          ? `<p class="muted">Estimated reward: ~${previewXp} XP</p>`
+          : `<p class="muted">Score at least ${Math.round(PASS_THRESHOLD * 100)}% to earn XP. Give it another shot.</p>`}
+        <div class="mg-actions">
+          ${passed ? `<button type="button" class="btn" id="mgClaimBtn">CLAIM XP</button>` : ''}
+          <button type="button" class="btn secondary" id="mgRetryBtn">TRY AGAIN</button>
+          <button type="button" class="btn secondary" id="mgCancelBtn">CLOSE</button>
+        </div>
+      `;
+
+      if (passed) {
+        document.getElementById('mgClaimBtn').onclick = () => claimReward(module, perfScore);
+      }
+      document.getElementById('mgRetryBtn').onclick = () => {
+        resultEl.style.display = 'none';
+        stage.style.display = 'block';
+        launchGame(gameType, module, params, stage);
+      };
+      document.getElementById('mgCancelBtn').onclick = closeMinigameModal;
+    }
+
+    async function claimReward(module, perfScore) {
+      try {
+        const previousLevel = currentPowerLevel;
+        const res = await apiFetch("/training/update_progress.php", "POST", {
+          module_id: module.module_id,
+          performance: perfScore
+        });
+        closeMinigameModal();
+        if (res.xp_awarded) {
+          const leveledUp = res.new_level != null && res.new_level > previousLevel;
+          celebrate(res.xp_awarded, leveledUp, res.new_level);
+        }
+        loadModules();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Level-up / XP celebration (replaces the old alert())
+    // ---------------------------------------------------------------
+
+    function spawnParticles(container, count) {
+      const colors = ['var(--gold)', 'var(--cyan)', 'var(--magenta)', 'var(--green)', 'var(--orange)'];
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'cel-particle';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 60 + Math.random() * 150;
+        p.style.setProperty('--dx', (Math.cos(angle) * dist) + 'px');
+        p.style.setProperty('--dy', (Math.sin(angle) * dist) + 'px');
+        p.style.background = colors[i % colors.length];
+        p.style.animationDelay = (Math.random() * 0.15) + 's';
+        container.appendChild(p);
+      }
+    }
+
+    function celebrate(xpAwarded, leveledUp, newLevel) {
+      const existing = document.getElementById('celOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'cel-overlay';
+      overlay.id = 'celOverlay';
+      overlay.innerHTML = `
+        <div class="cel-burst" id="celBurst"></div>
+        <div class="cel-content ${leveledUp ? 'cel-shake' : ''}">
+          ${leveledUp ? `<div class="cel-levelup">LEVEL UP!</div><div class="cel-level-num">Lv. ${newLevel}</div>` : ''}
+          <div class="cel-xp">+${xpAwarded} XP</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      spawnParticles(document.getElementById('celBurst'), leveledUp ? 36 : 18);
+
+      if (leveledUp) {
+        document.body.classList.add('cel-page-shake');
+        setTimeout(() => document.body.classList.remove('cel-page-shake'), 420);
+      }
+
+      const dismiss = () => overlay.remove();
+      overlay.addEventListener('click', dismiss);
+      setTimeout(dismiss, leveledUp ? 2300 : 1400);
+    }
+
+    // ---------------------------------------------------------------
+    // Game 1: Reflex Trial (physical / social) — reaction-time click test
+    // ---------------------------------------------------------------
+    function runReactionGame(params, stageEl, onComplete) {
+      const rounds = params.reactionRounds;
+      let round = 0;
+      let scores = [];
+      let timeoutId = null;
+      let stimulusAt = 0;
+      let phase = 'idle';
+
+      stageEl.innerHTML = `
+        <div class="mg-reaction-pad wait" id="mgPad">GET READY...</div>
+        <p class="mg-round-info" id="mgRoundInfo">Round 1 / ${rounds}</p>
+      `;
+      const pad = stageEl.querySelector('#mgPad');
+      const roundInfo = stageEl.querySelector('#mgRoundInfo');
+
+      function nextRound() {
+        if (round >= rounds) { finish(); return; }
+        round++;
+        roundInfo.textContent = `Round ${round} / ${rounds}`;
+        phase = 'waiting';
+        pad.className = 'mg-reaction-pad wait';
+        pad.textContent = 'WAIT FOR IT...';
+        const delay = 800 + Math.random() * 1400;
+        timeoutId = setTimeout(() => {
+          phase = 'go';
+          stimulusAt = window.performance.now();
+          pad.className = 'mg-reaction-pad go';
+          pad.textContent = 'CLICK NOW!';
+        }, delay);
+      }
+
+      function handleClick() {
+        if (phase === 'waiting') {
+          clearTimeout(timeoutId);
+          pad.className = 'mg-reaction-pad early';
+          pad.textContent = 'TOO SOON!';
+          scores.push(0);
+          phase = 'idle';
+          timeoutId = setTimeout(nextRound, 700);
+        } else if (phase === 'go') {
+          const elapsed = window.performance.now() - stimulusAt;
+          const maxAcceptable = params.reactionWindow;
+          const minGood = maxAcceptable * 0.25;
+          let score;
+          if (elapsed <= minGood) score = 1;
+          else if (elapsed >= maxAcceptable) score = 0;
+          else score = 1 - (elapsed - minGood) / (maxAcceptable - minGood);
+          scores.push(score);
+          pad.textContent = `${Math.round(elapsed)}ms — ${Math.round(score * 100)}%`;
+          phase = 'idle';
+          timeoutId = setTimeout(nextRound, 700);
+        }
+      }
+
+      pad.addEventListener('click', handleClick);
+
+      function finish() {
+        pad.removeEventListener('click', handleClick);
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        onComplete(avg);
+      }
+
+      nextRound();
+
+      return function cleanup() {
+        clearTimeout(timeoutId);
+        pad.removeEventListener('click', handleClick);
+      };
+    }
+
+    // ---------------------------------------------------------------
+    // Game 2: Mind Pattern (mental / reality) — memory-sequence match
+    // ---------------------------------------------------------------
+    function runMemoryGame(params, stageEl, onComplete) {
+      const rounds = params.memoryRounds;
+      let round = 0;
+      let scores = [];
+      let sequence = [];
+      let inputIndex = 0;
+      let accepting = false;
+      let timeouts = [];
+
+      stageEl.innerHTML = `
+        <p class="mg-round-info" id="mgRoundInfo">Watch the sequence...</p>
+        <div class="mg-memory-grid" id="mgGrid">
+          <div class="mg-tile" data-idx="0"></div>
+          <div class="mg-tile" data-idx="1"></div>
+          <div class="mg-tile" data-idx="2"></div>
+          <div class="mg-tile" data-idx="3"></div>
+        </div>
+      `;
+      const grid = stageEl.querySelector('#mgGrid');
+      const roundInfo = stageEl.querySelector('#mgRoundInfo');
+      const tiles = Array.from(grid.querySelectorAll('.mg-tile'));
+
+      function lightTile(idx, duration) {
+        return new Promise(resolve => {
+          const t = tiles[idx];
+          t.classList.add('lit');
+          const to = setTimeout(() => {
+            t.classList.remove('lit');
+            const to2 = setTimeout(resolve, 150);
+            timeouts.push(to2);
+          }, duration);
+          timeouts.push(to);
+        });
+      }
+
+      async function playSequence() {
+        accepting = false;
+        roundInfo.textContent = `Round ${round + 1} / ${rounds} — Watch...`;
+        for (const idx of sequence) {
+          await lightTile(idx, 450);
+        }
+        inputIndex = 0;
+        accepting = true;
+        roundInfo.textContent = `Round ${round + 1} / ${rounds} — Your turn!`;
+      }
+
+      function handleTileClick(e) {
+        if (!accepting) return;
+        const idx = parseInt(e.currentTarget.dataset.idx, 10);
+        e.currentTarget.classList.add('lit');
+        setTimeout(() => e.currentTarget.classList.remove('lit'), 180);
+
+        if (idx === sequence[inputIndex]) {
+          inputIndex++;
+          if (inputIndex === sequence.length) {
+            accepting = false;
+            scores.push(1);
+            round++;
+            timeouts.push(setTimeout(startRound, 700));
+          }
+        } else {
+          accepting = false;
+          scores.push(inputIndex / sequence.length);
+          round++;
+          timeouts.push(setTimeout(startRound, 700));
+        }
+      }
+
+      tiles.forEach(t => t.addEventListener('click', handleTileClick));
+
+      function startRound() {
+        if (round >= rounds) { finish(); return; }
+        const length = params.memoryLength + round;
+        sequence = Array.from({ length }, () => Math.floor(Math.random() * 4));
+        timeouts.push(setTimeout(playSequence, 500));
+      }
+
+      function finish() {
+        tiles.forEach(t => t.removeEventListener('click', handleTileClick));
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        onComplete(avg);
+      }
+
+      startRound();
+
+      return function cleanup() {
+        timeouts.forEach(clearTimeout);
+        tiles.forEach(t => t.removeEventListener('click', handleTileClick));
+      };
+    }
+
+    // ---------------------------------------------------------------
+    // Game 3: Spark Catch (elemental / bizarre) — timing-based catch
+    // ---------------------------------------------------------------
+    function runSparkGame(params, stageEl, onComplete) {
+      const rounds = params.sparkRounds;
+      let round = 0;
+      let scores = [];
+      let rafId = null;
+      let roundStart = 0;
+      let zoneCenterFrac = 0.5;
+      let zoneHalfFrac = 0.1;
+      let trackWidth = 0;
+      let timeoutId = null;
+      let awaitingClick = false;
+
+      stageEl.innerHTML = `
+        <p class="mg-round-info" id="mgRoundInfo">Round 1 / ${rounds}</p>
+        <div class="mg-spark-track" id="mgTrack">
+          <div class="mg-spark-zone" id="mgZone"></div>
+          <div class="mg-spark-orb" id="mgOrb"></div>
+        </div>
+        <button type="button" class="btn" id="mgCatchBtn">CATCH!</button>
+      `;
+      const track = stageEl.querySelector('#mgTrack');
+      const zoneEl = stageEl.querySelector('#mgZone');
+      const orbEl = stageEl.querySelector('#mgOrb');
+      const catchBtn = stageEl.querySelector('#mgCatchBtn');
+      const roundInfo = stageEl.querySelector('#mgRoundInfo');
+
+      function triangleFrac(elapsed, period) {
+        const t = elapsed % (2 * period);
+        return t <= period ? t / period : (2 * period - t) / period;
+      }
+
+      function startRound() {
+        if (round >= rounds) { finish(); return; }
+        round++;
+        roundInfo.textContent = `Round ${round} / ${rounds}`;
+        trackWidth = track.clientWidth || 300;
+        const zoneWidthPx = Math.min(Math.max(24, params.sparkZone), trackWidth * 0.5);
+        zoneHalfFrac = (zoneWidthPx / 2) / trackWidth;
+        zoneCenterFrac = 0.2 + Math.random() * 0.6;
+        zoneEl.style.left = ((zoneCenterFrac - zoneHalfFrac) * trackWidth) + 'px';
+        zoneEl.style.width = (zoneHalfFrac * 2 * trackWidth) + 'px';
+
+        awaitingClick = true;
+        roundStart = window.performance.now();
+        tick();
+
+        timeoutId = setTimeout(() => {
+          if (awaitingClick) {
+            awaitingClick = false;
+            cancelAnimationFrame(rafId);
+            scores.push(0);
+            timeoutId = setTimeout(startRound, 500);
+          }
+        }, params.sparkSpeed * 4);
+      }
+
+      function tick() {
+        const elapsed = window.performance.now() - roundStart;
+        const frac = triangleFrac(elapsed, params.sparkSpeed);
+        orbEl.style.left = (frac * trackWidth) + 'px';
+        if (awaitingClick) rafId = requestAnimationFrame(tick);
+      }
+
+      function handleCatch() {
+        if (!awaitingClick) return;
+        awaitingClick = false;
+        clearTimeout(timeoutId);
+        cancelAnimationFrame(rafId);
+        const elapsed = window.performance.now() - roundStart;
+        const frac = triangleFrac(elapsed, params.sparkSpeed);
+        const diff = Math.abs(frac - zoneCenterFrac);
+        const score = diff <= zoneHalfFrac ? (1 - diff / zoneHalfFrac) : 0;
+        scores.push(score);
+        timeoutId = setTimeout(startRound, 500);
+      }
+
+      catchBtn.addEventListener('click', handleCatch);
+
+      function finish() {
+        catchBtn.removeEventListener('click', handleCatch);
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        onComplete(avg);
+      }
+
+      startRound();
+
+      return function cleanup() {
+        clearTimeout(timeoutId);
+        cancelAnimationFrame(rafId);
+        catchBtn.removeEventListener('click', handleCatch);
+      };
+    }
+
+    loadModules();
+  </script>
+</body>
+
+</html>

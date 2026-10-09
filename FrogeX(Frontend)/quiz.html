@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Discover Your Power</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div><a href="#" onclick="logout()">Logout</a></div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Discover Your Power</h2>
+      <p class="muted">Answer honestly — this decides what you're stuck with.</p>
+      <form id="quizForm"></form>
+      <button id="submitQuiz" class="btn" style="margin-top:16px;">Reveal My Power</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <h2 id="resultName"></h2>
+      <span class="badge" id="resultCategory"></span>
+      <p id="resultDesc" class="muted" style="margin-top:12px;"></p>
+      <a href="dashboard.html" class="btn" style="margin-top:8px;">Go to Dashboard</a>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    requireLogin();
+    let questions = [];
+
+    async function loadQuestions() {
+      questions = await apiFetch("/quiz/get_questions.php");
+      const form = document.getElementById("quizForm");
+      form.innerHTML = questions.map(q => `
+        <div style="margin-bottom:14px;">
+          <p>${q.question_text}</p>
+          <select data-question-id="${q.question_id}">
+            <option value="agree">Agree</option>
+            <option value="neutral">Neutral</option>
+            <option value="disagree">Disagree</option>
+          </select>
+        </div>
+      `).join("");
+    }
+    loadQuestions();
+
+    document.getElementById("submitQuiz").addEventListener("click", async () => {
+      const selects = document.querySelectorAll("#quizForm select");
+      const answers = Array.from(selects)
+        .filter(s => s.value === "agree") // only count questions the user agreed with
+        .map(s => ({ question_id: Number(s.dataset.questionId), choice: s.value }));
+
+      try {
+        const res = await apiFetch("/powers/assign_power.php", "POST", { answers });
+        document.getElementById("quizForm").style.display = "none";
+        document.getElementById("submitQuiz").style.display = "none";
+        document.getElementById("resultCard").style.display = "block";
+        document.getElementById("resultName").textContent = res.power.power_name;
+        document.getElementById("resultCategory").textContent = res.power.category;
+        document.getElementById("resultDesc").textContent = res.power.description;
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  </script>
+</body>
+
+</html>

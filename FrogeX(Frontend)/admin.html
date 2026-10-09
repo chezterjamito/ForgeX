@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX <span class="badge" style="background:var(--red);"> ADMIN </span></div>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>Administration</h2>
+    <p class="muted">Only accounts with admin rights can view or use this page.</p>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="powers">Powers</button>
+      <button class="admin-tab" data-tab="modules">Training Modules</button>
+      <button class="admin-tab" data-tab="incidents">Incidents</button>
+      <button class="admin-tab" data-tab="users">Users</button>
+    </div>
+
+    <!-- POWERS -->
+    <div class="admin-panel active" id="panel-powers">
+      <div class="card">
+        <h3>Add / Edit Power</h3>
+        <form id="powerForm" class="form-grid">
+          <input type="hidden" id="p_power_id">
+          <input type="text" id="p_power_name" placeholder="Power name" required>
+          <select id="p_category" required>
+            <option value="elemental">Elemental</option>
+            <option value="mental">Mental</option>
+            <option value="physical">Physical</option>
+            <option value="bizarre">Bizarre</option>
+            <option value="reality">Reality</option>
+            <option value="social">Social</option>
+          </select>
+          <select id="p_rarity">
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="legendary">Legendary</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="p_world_changing"> World-changing
+          </label>
+          <textarea id="p_description" class="full-width" placeholder="Description" rows="2"></textarea>
+          <div class="full-width">
+            <button type="submit" class="btn">Save Power</button>
+            <button type="button" class="btn secondary" onclick="resetPowerForm()">Clear</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <table id="powersTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Rarity</th>
+              <th>World-changing</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODULES -->
+    <div class="admin-panel" id="panel-modules">
+      <div class="card">
+        <h3>Add / Edit Training Module</h3>
+        <form id="moduleForm" class="form-grid">
+          <input type="hidden" id="m_module_id">
+          <select id="m_power_id" required></select>
+          <input type="text" id="m_title" placeholder="Module title" required>
+          <select id="m_difficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced (Hard Training)</option>
+            <option value="master">Master (Hard Training)</option>
+          </select>
+          <input type="number" id="m_xp_reward" placeholder="XP reward" value="50" min="1">
+          <textarea id="m_description" class="full-width" placeholder="Description" rows="2"></textarea>
+          <div class="full-width">
+            <button type="submit" class="btn">Save Module</button>
+            <button type="button" class="btn secondary" onclick="resetModuleForm()">Clear</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <table id="modulesTable">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Power</th>
+              <th>Difficulty</th>
+              <th>XP</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div class="admin-panel" id="panel-incidents">
+      <div class="card">
+        <table id="incidentsTable">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Severity</th>
+              <th>Location</th>
+              <th>Reported by</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="admin-panel" id="panel-users">
+      <div class="card">
+        <h3>Edit User's Power</h3>
+        <p class="muted full-width" id="u_editing_label" style="margin-top:0;">Click Edit on a user below to load their
+          info here.</p>
+        <form id="userPowerForm" class="form-grid">
+          <input type="hidden" id="u_user_id">
+          <select id="u_power_id" required></select>
+          <input type="number" id="u_power_level" placeholder="Level" min="1" value="1">
+          <input type="number" id="u_xp" placeholder="XP" min="0" value="0">
+          <div class="full-width">
+            <button type="submit" class="btn">Save Changes</button>
+            <button type="button" class="btn secondary" onclick="resetUserPowerForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Power</th>
+              <th>Level</th>
+              <th>XP</th>
+              <th>Admin</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    requireAdmin();
+
+    // ---- Tab switching ----
+    document.querySelectorAll(".admin-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".admin-tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".admin-panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+      });
+    });
+
+    // ---- POWERS ----
+    let powersCache = [];
+
+    async function loadPowers() {
+      const powers = await apiFetch("/admin/manage_powers.php");
+      powersCache = powers;
+      document.querySelector("#powersTable tbody").innerHTML = powers.map(p => `
+        <tr>
+          <td>${p.power_name}</td>
+          <td>${p.category}</td>
+          <td>${p.rarity}</td>
+          <td>${Number(p.is_world_changing) ? "Yes" : "No"}</td>
+          <td>
+            <button class="btn btn-small" onclick="editPower(${p.power_id})">Edit</button>
+            <button class="btn btn-small btn-danger" onclick="deletePower(${p.power_id})">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+
+      // Also refresh the power dropdown used by the module form
+      const select = document.getElementById("m_power_id");
+      select.innerHTML = powers.map(p => `<option value="${p.power_id}">${p.power_name}</option>`).join("");
+    }
+
+    function resetPowerForm() {
+      document.getElementById("powerForm").reset();
+      document.getElementById("p_power_id").value = "";
+    }
+
+    function editPower(powerId) {
+      const p = powersCache.find(x => x.power_id === powerId);
+      if (!p) return;
+      document.getElementById("p_power_id").value = p.power_id;
+      document.getElementById("p_power_name").value = p.power_name;
+      document.getElementById("p_category").value = p.category;
+      document.getElementById("p_rarity").value = p.rarity;
+      document.getElementById("p_world_changing").checked = !!Number(p.is_world_changing);
+      document.getElementById("p_description").value = p.description || "";
+    }
+
+    document.getElementById("powerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("p_power_id").value;
+      const payload = {
+        power_name: document.getElementById("p_power_name").value,
+        category: document.getElementById("p_category").value,
+        rarity: document.getElementById("p_rarity").value,
+        is_world_changing: document.getElementById("p_world_changing").checked,
+        description: document.getElementById("p_description").value
+      };
+      if (id) payload.power_id = Number(id);
+      try {
+        await apiFetch("/admin/manage_powers.php", id ? "PUT" : "POST", payload);
+        resetPowerForm();
+        loadPowers();
+      } catch (err) { alert(err.message); }
+    });
+
+    async function deletePower(id) {
+      if (!confirm("Delete this power? This cannot be undone.")) return;
+      try {
+        await apiFetch("/admin/manage_powers.php", "DELETE", { power_id: id });
+        loadPowers();
+      } catch (err) { alert(err.message); }
+    }
+
+    // ---- MODULES ----
+    let modulesCache = [];
+
+    async function loadModules() {
+      const modules = await apiFetch("/admin/manage_modules.php");
+      modulesCache = modules;
+      document.querySelector("#modulesTable tbody").innerHTML = modules.map(m => `
+        <tr>
+          <td>${m.title}</td>
+          <td>${m.power_name}</td>
+          <td><span class="badge badge-${m.difficulty}">${m.difficulty}</span></td>
+          <td>${m.xp_reward}</td>
+          <td>
+            <button class="btn btn-small" onclick="editModule(${m.module_id})">Edit</button>
+            <button class="btn btn-small btn-danger" onclick="deleteModule(${m.module_id})">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function resetModuleForm() {
+      document.getElementById("moduleForm").reset();
+      document.getElementById("m_module_id").value = "";
+    }
+
+    function editModule(moduleId) {
+      const m = modulesCache.find(x => x.module_id === moduleId);
+      if (!m) return;
+      document.getElementById("m_module_id").value = m.module_id;
+      document.getElementById("m_power_id").value = m.power_id;
+      document.getElementById("m_title").value = m.title;
+      document.getElementById("m_difficulty").value = m.difficulty;
+      document.getElementById("m_xp_reward").value = m.xp_reward;
+      document.getElementById("m_description").value = m.description || "";
+    }
+
+    document.getElementById("moduleForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("m_module_id").value;
+      const payload = {
+        power_id: Number(document.getElementById("m_power_id").value),
+        title: document.getElementById("m_title").value,
+        difficulty: document.getElementById("m_difficulty").value,
+        xp_reward: Number(document.getElementById("m_xp_reward").value),
+        description: document.getElementById("m_description").value
+      };
+      if (id) payload.module_id = Number(id);
+      try {
+        await apiFetch("/admin/manage_modules.php", id ? "PUT" : "POST", payload);
+        resetModuleForm();
+        loadModules();
+      } catch (err) { alert(err.message); }
+    });
+
+    async function deleteModule(id) {
+      if (!confirm("Delete this module?")) return;
+      try {
+        await apiFetch("/admin/manage_modules.php", "DELETE", { module_id: id });
+        loadModules();
+      } catch (err) { alert(err.message); }
+    }
+
+    // ---- INCIDENTS ----
+    async function loadIncidents() {
+      const incidents = await apiFetch("/admin/manage_incidents.php");
+      document.querySelector("#incidentsTable tbody").innerHTML = incidents.map(i => `
+        <tr>
+          <td>${i.description}</td>
+          <td><span class="badge">${i.severity}</span></td>
+          <td>${i.location ?? "—"}</td>
+          <td>${i.reported_by_username}</td>
+          <td>
+            <select onchange="updateIncidentStatus(${i.incident_id}, this.value)">
+              <option value="open" ${i.status === 'open' ? 'selected' : ''}>Open</option>
+              <option value="investigating" ${i.status === 'investigating' ? 'selected' : ''}>Investigating</option>
+              <option value="resolved" ${i.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+            </select>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function updateIncidentStatus(id, status) {
+      try {
+        await apiFetch("/admin/manage_incidents.php", "PUT", { incident_id: id, status });
+      } catch (err) { alert(err.message); }
+    }
+
+    // ---- USERS ----
+    let usersCache = [];
+
+    async function loadUsers() {
+      const users = await apiFetch("/admin/manage_users.php");
+      usersCache = users;
+      document.querySelector("#usersTable tbody").innerHTML = users.map(u => `
+        <tr>
+          <td>${u.username}</td>
+          <td>${u.email}</td>
+          <td>${u.power_name ?? "—"}</td>
+          <td>${u.power_level ?? "—"}</td>
+          <td>${u.xp ?? "—"}</td>
+          <td>${Number(u.is_admin) ? "Yes" : "No"}</td>
+          <td><button class="btn btn-small" onclick="editUserPower(${u.user_id})">Edit</button></td>
+        </tr>
+      `).join("");
+
+      // The power dropdown here reuses the same list loaded for the Modules tab
+      const select = document.getElementById("u_power_id");
+      select.innerHTML = powersCache.map(p => `<option value="${p.power_id}">${p.power_name}</option>`).join("");
+    }
+
+    function resetUserPowerForm() {
+      document.getElementById("userPowerForm").reset();
+      document.getElementById("u_user_id").value = "";
+      document.getElementById("u_editing_label").textContent = "Click Edit on a user below to load their info here.";
+    }
+
+    function editUserPower(userId) {
+      const u = usersCache.find(x => x.user_id === userId);
+      if (!u) return;
+      document.getElementById("u_user_id").value = u.user_id;
+      document.getElementById("u_editing_label").textContent = `Editing: ${u.username}${u.power_name ? " (" + u.power_name + ")" : " (no power yet)"}`;
+      if (u.power_id) document.getElementById("u_power_id").value = u.power_id;
+      document.getElementById("u_power_level").value = u.power_level || 1;
+      document.getElementById("u_xp").value = u.xp || 0;
+    }
+
+    document.getElementById("userPowerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById("u_user_id").value;
+      if (!userId) {
+        alert("Click Edit on a user's row first.");
+        return;
+      }
+      try {
+        await apiFetch("/admin/manage_users.php", "PUT", {
+          user_id: Number(userId),
+          power_id: Number(document.getElementById("u_power_id").value),
+          power_level: Number(document.getElementById("u_power_level").value),
+          xp: Number(document.getElementById("u_xp").value)
+        });
+        resetUserPowerForm();
+        loadUsers();
+      } catch (err) { alert(err.message); }
+    });
+
+    // Load in order so the Users tab's power dropdown is populated
+    // before it tries to use powersCache.
+    (async () => {
+      await loadPowers();
+      await loadModules();
+      await loadIncidents();
+      await loadUsers();
+    })();
+  </script>
+</body>
+
+</html>

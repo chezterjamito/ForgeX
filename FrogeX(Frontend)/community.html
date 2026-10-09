@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>Community Leaderboard</h2>
+    <div class="card">
+      <table id="leaderboardTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Rank</th>
+            <th>User</th>
+            <th>Power</th>
+            <th>Category</th>
+            <th>Level</th>
+            <th>XP</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (isLoggedIn()) {
+      document.getElementById("navLinks").innerHTML = `
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="training.html">Training</a>
+        <a href="community.html">Leaderboard</a>
+        <a href="report.html">Report Incident</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+      showAdminLinkIfAdmin();
+    }
+
+    async function loadLeaderboard() {
+      const rows = await apiFetch("/community/leaderboard.php?sort=xp&order=desc");
+      const tbody = document.querySelector("#leaderboardTable tbody");
+      tbody.innerHTML = rows.map((r, i) => `
+        <tr>
+          <td><img class="avatar-small" src="https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(r.username)}" alt=""></td>
+          <td>#${i + 1}</td>
+          <td>${r.username}</td>
+          <td>${r.power_name}</td>
+          <td><span class="badge">${r.category}</span></td>
+          <td>${r.power_level}</td>
+          <td>${r.xp}</td>
+        </tr>
+      `).join("");
+    }
+    loadLeaderboard();
+  </script>
+</body>
+
+</html>

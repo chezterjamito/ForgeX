@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Everyone Has a Power</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <h1>Uncover your hidden potential.</h1>
+    <p>Discover your power,Train And Master it,to navigate a world where 8 billion people hold a absolute power.</p>
+    <a href="register.html" id="ctaBtn" class="btn">Get Started</a>
+    <a href="community.html" class="btn secondary">Browse the Leaderboard</a>
+  </div>
+
+  <div class="container">
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-box">
+        <div class="stat-num">—</div>
+        <div class="muted">Users</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">—</div>
+        <div class="muted">Known Powers</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">—</div>
+        <div class="muted">Incidents Reported</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">—</div>
+        <div class="muted">World-Changing Powers</div>
+      </div>
+    </div>
+
+    <h2>What ForgeX Does</h2>
+    <div class="feature-grid">
+      <div class="card">
+        <h3>🎲 Discover</h3>
+        <p class="muted">Take the Discovery Quiz and find out which of six power categories you're stuck with — from
+          elemental to bizarre.</p>
+      </div>
+      <div class="card">
+        <h3>💪 Train</h3>
+        <p class="muted">Work through beginner-to-master training modules. Hard Training tiers unlock at higher levels
+          and pay out serious XP.</p>
+      </div>
+      <div class="card">
+        <h3>🪪 Manage</h3>
+        <p class="muted">Your Profile shows your power, your level and XP progress, and how many modules and incidents
+          you've logged.</p>
+      </div>
+      <div class="card">
+        <h3>🌍 Adapt</h3>
+        <p class="muted">Report real incidents involving powers — every report you file earns XP and helps the community
+          track what's going on.</p>
+      </div>
+      <div class="card">
+        <h3>🏆 Compete</h3>
+        <p class="muted">Public Leaderboard ranks every user by level and XP. Everyone with a public profile is on it.
+        </p>
+      </div>
+      <div class="card">
+        <h3>🛠️ Govern</h3>
+        <p class="muted">A small admin team manages the power catalog, training content, and incident review to keep
+          ForgeX running smoothly.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>How it works</h3>
+      <p class="muted">
+        1. Register and log in.<br>
+        2. Take the Discovery Quiz — your answers weight which category your randomly-assigned power comes from.<br>
+        3. Train your power through modules; harder tiers unlock as you level up.<br>
+        4. Report incidents to earn extra XP and help keep society informed.<br>
+        5. Check your Profile any time to see your standing, or the Leaderboard to see everyone else's.
+      </p>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // Adjust nav + CTA button depending on whether someone is already logged in
+    if (isLoggedIn()) {
+      document.getElementById("navLinks").innerHTML = `
+        <a href="index.html">Home</a>
+        <a href="community.html">Leaderboard</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+      document.getElementById("ctaBtn").textContent = "Go to Dashboard";
+      document.getElementById("ctaBtn").href = "dashboard.html";
+      showAdminLinkIfAdmin();
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await apiFetch("/stats/public_summary.php");
+        const boxes = document.querySelectorAll("#statsGrid .stat-num");
+        boxes[0].textContent = stats.total_users;
+        boxes[1].textContent = stats.total_powers;
+        boxes[2].textContent = stats.total_incidents;
+        boxes[3].textContent = stats.world_changing_powers;
+      } catch (e) { /* stats are non-critical, fail silently */ }
+    }
+    loadStats();
+  </script>
+</body>
+
+</html>

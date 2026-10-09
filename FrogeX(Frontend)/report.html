@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Report Incident</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .picked-pin-inner {
+      font-size: 28px;
+      line-height: 1;
+      filter: drop-shadow(2px 2px 0 var(--ink));
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="training.html">Training</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="report.html">Report Incident</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card" style="max-width:500px;">
+      <h2>Report an Incident</h2>
+      <p class="muted">Help society track power-related events.</p>
+      <form id="reportForm">
+        <textarea id="description" placeholder="What happened?" rows="4" required></textarea>
+        <select id="severity">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+        <input type="text" id="location" placeholder="Location (click the map below, or use your location)">
+        <button type="button" class="btn secondary" id="useLocationBtn" style="width:fit-content;">📍 Use My
+          Location</button>
+        <input type="hidden" id="latitude">
+        <input type="hidden" id="longitude">
+        <button type="submit" class="btn">Submit Report</button>
+        <p id="message"></p>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Incident Map</h3>
+      <p class="muted">📍 Click anywhere on the map — or drag the pin once it's placed — to set the incident
+        location automatically.</p>
+      <p class="muted" id="mapEmptyNote" style="display:none;">No incidents with a pinned location yet — use "Use My
+        Location" when reporting to appear here.</p>
+      <div id="incidentMap"
+        style="height:320px; border:3px solid var(--ink); box-shadow:4px 4px 0 var(--border); cursor:crosshair;"></div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Incidents</h3>
+      <table id="incidentsTable">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Severity</th>
+            <th>Location</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    requireLogin();
+    showAdminLinkIfAdmin();
+
+    // ---- Shared pixel-pin icon for the "picked" report location ----
+    const pickedIcon = L.divIcon({
+      className: 'picked-pin',
+      html: '<div class="picked-pin-inner">📍</div>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 28]
+    });
+
+    let pickedMarker = null;
+    let geocodeToken = 0; // guards against an older in-flight lookup overwriting a newer click/drag
+
+    // Reverse-geocodes lat/lon (forced to English via accept-language=en), fills the form,
+    // and drops/moves the draggable pin on the map. Shared by map clicks, pin drags, and
+    // the "Use My Location" button so there's one source of truth for setting a location.
+    async function setLocationFromLatLng(lat, lon) {
+      document.getElementById("latitude").value = lat;
+      document.getElementById("longitude").value = lon;
+
+      if (!pickedMarker) {
+        pickedMarker = L.marker([lat, lon], { icon: pickedIcon, draggable: true }).addTo(map);
+        pickedMarker.on('dragend', () => {
+          const pos = pickedMarker.getLatLng();
+          setLocationFromLatLng(pos.lat, pos.lng);
+        });
+      } else {
+        pickedMarker.setLatLng([lat, lon]);
+      }
+
+      const locationInput = document.getElementById("location");
+      const myToken = ++geocodeToken;
+      locationInput.value = "Looking up address...";
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`
+        );
+        const place = await res.json();
+        if (myToken !== geocodeToken) return; // superseded by a newer click/drag
+        locationInput.value = place.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      } catch (e) {
+        if (myToken !== geocodeToken) return;
+        locationInput.value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      }
+    }
+
+    // ---- "Use My Location" button: browser geolocation, routed through the same helper ----
+    document.getElementById("useLocationBtn").addEventListener("click", () => {
+      const btn = document.getElementById("useLocationBtn");
+      if (!navigator.geolocation) {
+        alert("Your browser doesn't support geolocation.");
+        return;
+      }
+      btn.textContent = "📍 Locating...";
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        await setLocationFromLatLng(pos.coords.latitude, pos.coords.longitude);
+        if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+        btn.textContent = "📍 Use My Location";
+      }, (err) => {
+        alert("Couldn't get your location: " + err.message);
+        btn.textContent = "📍 Use My Location";
+      });
+    });
+
+    // ---- Map setup ----
+    const severityColors = { low: "#57e389", medium: "#2fe6d1", high: "#ff9f43", critical: "#ff4d4d" };
+    let map, markerLayer;
+
+    function initMap() {
+      map = L.map('incidentMap').setView([20, 0], 2); // world view until we have real points
+
+      // Standard OpenStreetMap tiles: genuinely free, no API key, no account. CARTO's
+      // basemaps (tried here previously) now require a free API key to load, so they're
+      // out for a no-signup setup. Label language still comes from each area's local OSM
+      // data, so country/city names on the map itself stay in local script — the location
+      // text actually saved to your database (below) is still forced to English.
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      markerLayer = L.layerGroup().addTo(map);
+
+      // Click-to-pin shortcut: tap anywhere on the map to drop/move the pin there.
+      map.on('click', (e) => {
+        setLocationFromLatLng(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    function plotIncidents(rows) {
+      markerLayer.clearLayers();
+      const withCoords = rows.filter(r => r.latitude !== null && r.longitude !== null);
+
+      document.getElementById("mapEmptyNote").style.display = withCoords.length ? "none" : "block";
+
+      withCoords.forEach(r => {
+        const color = severityColors[r.severity] || "#2fe6d1";
+        const marker = L.circleMarker([r.latitude, r.longitude], {
+          radius: 9,
+          color: "#050109",
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.9
+        }).addTo(markerLayer);
+        marker.bindPopup(`
+          <strong>${r.description}</strong><br>
+          Severity: ${r.severity}<br>
+          Status: ${r.status}<br>
+          Reported by: ${r.reported_by_username}
+        `);
+      });
+
+      if (withCoords.length) {
+        const bounds = L.latLngBounds(withCoords.map(r => [r.latitude, r.longitude]));
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+      }
+    }
+
+    async function loadIncidents() {
+      const rows = await apiFetch("/incidents/list_incidents.php");
+      document.querySelector("#incidentsTable tbody").innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.description}</td>
+          <td><span class="badge">${r.severity}</span></td>
+          <td>${r.location ?? "—"}</td>
+          <td>${r.status}</td>
+        </tr>
+      `).join("");
+      plotIncidents(rows);
+    }
+
+    document.getElementById("reportForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("message");
+      try {
+        const res = await apiFetch("/incidents/report_incident.php", "POST", {
+          description: document.getElementById("description").value,
+          severity: document.getElementById("severity").value,
+          location: document.getElementById("location").value,
+          latitude: document.getElementById("latitude").value,
+          longitude: document.getElementById("longitude").value
+        });
+        msg.textContent = res.xp_awarded
+          ? `Incident reported (${res.severity} severity) — +${res.xp_awarded} XP! Total XP: ${res.total_xp}, Level ${res.new_level}.`
+          : "Incident reported. (Take the Discovery Quiz to start earning XP from reports.)";
+        msg.className = "success";
+        document.getElementById("reportForm").reset();
+        if (pickedMarker) { map.removeLayer(pickedMarker); pickedMarker = null; }
+        loadIncidents();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "error";
+      }
+    });
+
+    initMap();
+    loadIncidents();
+  </script>
+</body>
+
+</html>

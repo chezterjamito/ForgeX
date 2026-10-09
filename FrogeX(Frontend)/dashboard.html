@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ---- Hero power card ---- */
+    .dash-hero {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .dash-hero .avatar-circle {
+      width: 84px;
+      height: 84px;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .dash-hero-info {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .dash-hero-info h2 {
+      margin-bottom: 6px;
+    }
+
+    .dash-level-pill {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      padding: 5px 12px;
+      border: 2px solid var(--ink);
+      margin-right: 10px;
+    }
+
+    .dash-xp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .dash-welcome {
+      font-family: var(--font-display);
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      color: var(--gold);
+      text-shadow: 2px 2px 0 var(--ink);
+      margin-bottom: 16px;
+    }
+
+    /* ---- Quick action tiles ---- */
+    .dash-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin: 26px 0;
+    }
+
+    .dash-action-card {
+      background: var(--panel);
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 var(--border);
+      padding: 18px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+      transition: transform 0.08s, box-shadow 0.08s;
+    }
+
+    .dash-action-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 var(--border);
+    }
+
+    .dash-action-card .dash-action-icon {
+      font-size: 1.8rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .dash-action-card h4 {
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      color: var(--gold);
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+
+    /* ---- Two-column lower section ---- */
+    .dash-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 760px) {
+      .dash-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .next-module-box {
+      border: 2px dashed var(--border);
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    /* ---- World incident feed ---- */
+    .feed-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 2px solid var(--border);
+      font-size: 1.05rem;
+    }
+
+    .feed-item:last-child {
+      border-bottom: none;
+    }
+
+    .feed-sev-dot {
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+      border: 2px solid var(--ink);
+      position: relative;
+      top: 6px;
+    }
+
+    .feed-desc {
+      flex: 1;
+      color: var(--text);
+    }
+
+    .feed-meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="training.html">Training</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="report.html">Report Incident</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <p class="dash-welcome" id="welcomeText">Welcome back!</p>
+    <div class="card dash-hero" id="powerCard">Loading your power...</div>
+
+
+
+    <div class="dash-columns">
+      <div class="card">
+        <h3>Training Progress</h3>
+        <div id="trainingSummary">Loading...</div>
+      </div>
+
+      <div class="card">
+        <h3>World Incident Feed</h3>
+        <div id="incidentFeed">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    requireLogin();
+    showAdminLinkIfAdmin();
+
+    // Same source of truth profile.html uses, so the welcome text and the
+    // avatar seed match exactly what's shown on the Profile page.
+    async function loadWelcome() {
+      try {
+        const data = await apiFetch("/users/get_profile.php");
+        const username = data.user.username;
+        document.getElementById("welcomeText").textContent = `Welcome back, ${username}!`;
+        return username;
+      } catch (err) {
+        document.getElementById("welcomeText").textContent = "Welcome back!";
+        return null;
+      }
+    }
+
+    async function loadPower(username) {
+      try {
+        const power = await apiFetch("/powers/get_my_power.php");
+        const xpIntoLevel = power.xp % XP_PER_LEVEL;
+        const xpToNext = XP_PER_LEVEL - xpIntoLevel;
+        const progressPercent = Math.round((xpIntoLevel / XP_PER_LEVEL) * 100);
+
+        // Seed on the username (same as profile.html) so the avatar matches;
+        // fall back to the power name only if the username couldn't be loaded.
+        const avatarSeed = username || power.power_name;
+
+        document.getElementById("powerCard").innerHTML = `
+          <div class="avatar-circle">
+            <img src="https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(avatarSeed)}"
+                 alt="" style="width:100%;height:100%;">
+          </div>
+          <div class="dash-hero-info">
+            <h2>${power.power_name} <span class="badge">${power.category}</span></h2>
+            <p class="muted">${power.description || ''}</p>
+            <span class="dash-level-pill">LV. ${power.power_level}</span>
+            <span class="muted">${power.xp} XP total</span>
+            <div class="progress-bar" style="margin-top:10px;">
+              <div class="progress-bar-fill" style="width:${progressPercent}%"></div>
+            </div>
+            <div class="dash-xp-label">
+              <span>${xpIntoLevel} / ${XP_PER_LEVEL} XP this level</span>
+              <span>${xpToNext} XP to Lv. ${power.power_level + 1}</span>
+            </div>
+          </div>
+        `;
+
+        loadTrainingSummary(power.power_id);
+      } catch (err) {
+        window.location.href = "quiz.html";
+      }
+    }
+
+    async function loadTrainingSummary(powerId) {
+      const el = document.getElementById("trainingSummary");
+      try {
+        const modules = await apiFetch("/training/get_modules.php?power_id=" + powerId);
+        const completed = modules.filter(m => m.status === 'completed').length;
+        const total = modules.length;
+        const pct = total ? Math.round((completed / total) * 100) : 0;
+
+        const next = modules.find(m => m.status !== 'completed' && (m.difficulty === 'beginner' || m.difficulty === 'intermediate'))
+          || modules.find(m => m.status !== 'completed');
+
+        el.innerHTML = `
+          <p>${completed} / ${total} modules completed</p>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          ${next ? `
+            <div class="next-module-box">
+              <p class="muted" style="margin-bottom:4px;">Up next:</p>
+              <strong>${next.title}</strong> <span class="badge badge-${next.difficulty}">${next.difficulty}</span>
+              <p class="muted">Reward: up to ${next.xp_reward} XP</p>
+              <a class="btn btn-small" href="training.html">⚡ Go Train</a>
+            </div>
+          ` : `<p class="success" style="margin-top:10px;">All modules complete — you're maxed out!</p>`}
+        `;
+      } catch (err) {
+        el.innerHTML = `<p class="muted">Couldn't load training progress.</p>`;
+      }
+    }
+
+    async function loadIncidentFeed() {
+      const el = document.getElementById("incidentFeed");
+      const severityColors = { low: "#57e389", medium: "#2fe6d1", high: "#ff9f43", critical: "#ff4d4d" };
+      try {
+        const rows = await apiFetch("/incidents/list_incidents.php");
+        const recent = rows.slice(0, 5);
+        el.innerHTML = recent.length ? recent.map(r => `
+          <div class="feed-item">
+            <span class="feed-sev-dot" style="background:${severityColors[r.severity] || '#2fe6d1'};"></span>
+            <span class="feed-desc">${r.description}</span>
+            <span class="feed-meta">${r.reported_by_username}</span>
+          </div>
+        `).join("") : `<p class="muted">No incidents reported yet.</p>`;
+      } catch (err) {
+        el.innerHTML = `<p class="muted">Couldn't load incident feed.</p>`;
+      }
+    }
+
+    loadWelcome().then(loadPower);
+    loadIncidentFeed();
+  </script>
+</body>
+
+</html>

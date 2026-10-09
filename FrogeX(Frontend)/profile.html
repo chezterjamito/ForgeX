@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ForgeX - My Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="logo">FORGEX</div>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="training.html">Training</a>
+      <a href="community.html">Leaderboard</a>
+      <a href="report.html">Report Incident</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="adminNavLink" style="display:none;" onclick="window.location.href='admin.html'">Admin</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <div class="profile-header">
+        <div class="avatar-circle"><img id="avatarImg" src="" alt="avatar"></div>
+        <div>
+          <h2 id="profileUsername" style="margin-bottom:4px;">Loading...</h2>
+          <p class="muted" id="profileEmail"></p>
+          <p class="muted" id="profileJoined"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="powerSection">Loading power info...</div>
+
+    <div class="card">
+      <h3>Stats</h3>
+      <span class="stat-pill" id="modulesCompletedPill">Modules completed: —</span>
+      <span class="stat-pill" id="incidentsReportedPill">Incidents reported: —</span>
+    </div>
+
+    <div class="card">
+      <h3>About Me</h3>
+      <form id="bioForm">
+        <textarea id="bio" placeholder="Write a short bio..." rows="3"></textarea>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="isPublic">
+            <span class="slider"></span>
+          </label>
+          <span class="muted">Show my profile on the public Leaderboard</span>
+        </div>
+        <button type="submit" class="btn" style="width:fit-content;">Save Changes</button>
+        <p id="message"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    requireLogin();
+    showAdminLinkIfAdmin();
+
+    async function loadProfile() {
+      const data = await apiFetch("/users/get_profile.php");
+
+      document.getElementById("avatarImg").src =
+        `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(data.user.username)}`;
+      document.getElementById("profileUsername").textContent = data.user.username;
+      document.getElementById("profileEmail").textContent = data.user.email;
+      document.getElementById("profileJoined").textContent = "Joined " + new Date(data.user.created_at).toLocaleDateString();
+      document.getElementById("bio").value = data.user.bio || "";
+      document.getElementById("isPublic").checked = !!Number(data.user.is_public);
+
+      document.getElementById("modulesCompletedPill").textContent = "Modules completed: " + data.modules_completed;
+      document.getElementById("incidentsReportedPill").textContent = "Incidents reported: " + data.incidents_reported;
+
+      const powerSection = document.getElementById("powerSection");
+      if (!data.power) {
+        powerSection.innerHTML = `<p class="muted">You haven't discovered your power yet.</p>
+          <a href="quiz.html" class="btn" style="margin-top:8px;">Take the Discovery Quiz</a>`;
+        return;
+      }
+
+      const prog = xpProgress(data.power.xp);
+      powerSection.innerHTML = `
+        <h2>${data.power.power_name} <span class="badge">${data.power.category}</span></h2>
+        <p class="muted">${data.power.description}</p>
+        <p class="muted">Rarity: ${data.power.rarity} · Discovered ${new Date(data.power.discovered_at).toLocaleDateString()}</p>
+        <p style="margin-top:10px;">Level ${prog.level} — ${data.power.xp} XP total</p>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width:${prog.percent}%"></div></div>
+        <p class="muted" style="margin-top:4px;">${prog.remaining} XP to next level</p>
+      `;
+    }
+
+    document.getElementById("bioForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("message");
+      try {
+        await apiFetch("/users/update_profile.php", "POST", {
+          bio: document.getElementById("bio").value,
+          is_public: document.getElementById("isPublic").checked
+        });
+        msg.textContent = "Saved.";
+        msg.className = "success";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "error";
+      }
+    });
+
+    loadProfile();
+  </script>
+</body>
+
+</html>
