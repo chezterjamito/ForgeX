@@ -6,4 +6,5 @@ WORKDIR /app
 COPY "FrogeX(Frontend)/" /app/
 COPY api/ /app/api/
 
+EXPOSE 10000
 CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-10000} -t /app"]
