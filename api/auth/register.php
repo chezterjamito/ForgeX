@@ -13,17 +13,23 @@ if (!$username || !$email || !$password) {
     exit;
 }
 
-$check = $pdo->prepare("SELECT user_id FROM users WHERE email = ? OR username = ?");
-$check->execute([$email, $username]);
-if ($check->rowCount() > 0) {
-    http_response_code(409);
-    echo json_encode(["error" => "Username or email already taken"]);
-    exit;
+try {
+    $check = $pdo->prepare("SELECT user_id FROM users WHERE email = ? OR username = ?");
+    $check->execute([$email, $username]);
+    if ($check->rowCount() > 0) {
+        http_response_code(409);
+        echo json_encode(["error" => "Username or email already taken"]);
+        exit;
+    }
+
+    $hash = password_hash($password, PASSWORD_BCRYPT);
+    $stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)");
+    $stmt->execute([$username, $email, $hash]);
+
+    echo json_encode(["message" => "Account created", "user_id" => $pdo->lastInsertId()]);
+} catch (PDOException $e) {
+    error_log('Registration database error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(["error" => "Registration failed. Check the Render service logs and database schema."]);
 }
-
-$hash = password_hash($password, PASSWORD_BCRYPT);
-$stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)");
-$stmt->execute([$username, $email, $hash]);
-
-echo json_encode(["message" => "Account created", "user_id" => $pdo->lastInsertId()]);
 ?>
