@@ -1,5 +1,5 @@
-// Change this only if your frontend and /api folder are NOT both inside htdocs/forgex
-const API_BASE = "/forgex/api";
+// Frontend and API are served from the same host in production and locally.
+const API_BASE = "/api";
 
 /**
  * Wrapper around fetch() for talking to the PHP backend.
