@@ -66,8 +66,8 @@ try {
         exit;
     }
 
-    $validSeverities = ["low", "medium", "high", "critical"];
-    if (!in_array($severity, $validSeverities, true)) {
+    $pendingXpTable = ["low" => 10, "medium" => 25, "high" => 50, "critical" => 100];
+    if (!array_key_exists($severity, $pendingXpTable)) {
         http_response_code(400);
         echo json_encode(["error" => "severity must be one of: low, medium, high, critical"]);
         exit;
@@ -98,7 +98,7 @@ try {
         "incident_id" => $incidentId,
         "severity" => $severity,
         "xp_awarded" => 0,
-        "xp_pending_admin_acceptance" => true
+        "xp_pending_admin_acceptance" => $pendingXpTable[$severity]
     ]);
 } catch (Throwable $e) {
     http_response_code(500);

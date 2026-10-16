@@ -309,7 +309,7 @@
           latitude: document.getElementById("latitude").value,
           longitude: document.getElementById("longitude").value
         });
-        msg.textContent = "Incident submitted. No XP is awarded until an admin accepts the incident.";
+        msg.textContent = `Incident submitted. No XP awarded yet. If an admin accepts it, the reward will be +${res.xp_pending_admin_acceptance} XP.`;
         msg.className = "success";
         document.getElementById("reportForm").reset();
         if (pickedMarker) { map.removeLayer(pickedMarker); pickedMarker = null; }
