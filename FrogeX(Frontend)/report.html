@@ -51,7 +51,8 @@
           Location</button>
         <input type="hidden" id="latitude">
         <input type="hidden" id="longitude">
-        <button type="submit" class="btn">Submit Report</button>
+        <p id="cooldownIndicator" class="muted" role="status" aria-live="polite" style="display:none;"></p>
+        <button type="submit" class="btn" id="submitReportBtn">Submit Report</button>
         <p id="message"></p>
       </form>
     </div>
@@ -87,6 +88,48 @@
   <script>
     requireLogin();
     showAdminLinkIfAdmin();
+
+    const submitReportBtn = document.getElementById("submitReportBtn");
+    const cooldownIndicator = document.getElementById("cooldownIndicator");
+    let cooldownRemaining = 0;
+    let cooldownTimer = null;
+
+    function renderCooldown() {
+      if (cooldownRemaining <= 0) {
+        cooldownRemaining = 0;
+        submitReportBtn.disabled = false;
+        cooldownIndicator.style.display = "none";
+        if (cooldownTimer) clearInterval(cooldownTimer);
+        cooldownTimer = null;
+        return;
+      }
+      submitReportBtn.disabled = true;
+      const minutes = Math.floor(cooldownRemaining / 60);
+      const seconds = cooldownRemaining % 60;
+      cooldownIndicator.textContent = `Incident accepted. You can report again in ${minutes}:${String(seconds).padStart(2, "0")}.`;
+      cooldownIndicator.style.display = "block";
+    }
+
+    function startCooldown(seconds) {
+      cooldownRemaining = Math.max(0, Number(seconds) || 0);
+      if (cooldownTimer) clearInterval(cooldownTimer);
+      renderCooldown();
+      if (cooldownRemaining > 0) {
+        cooldownTimer = setInterval(() => {
+          cooldownRemaining -= 1;
+          renderCooldown();
+        }, 1000);
+      }
+    }
+
+    async function refreshCooldown() {
+      try {
+        const state = await apiFetch("/incidents/report_incident.php");
+        startCooldown(state.cooldown_seconds);
+      } catch (err) {
+        console.error("Couldn't load incident cooldown:", err);
+      }
+    }
 
     // ---- Shared pixel-pin icon for the "picked" report location ----
     const pickedIcon = L.divIcon({
@@ -220,6 +263,7 @@
     document.getElementById("reportForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = document.getElementById("message");
+      if (cooldownRemaining > 0) return;
       try {
         const res = await apiFetch("/incidents/report_incident.php", "POST", {
           description: document.getElementById("description").value,
@@ -241,14 +285,18 @@
         document.getElementById("reportForm").reset();
         if (pickedMarker) { map.removeLayer(pickedMarker); pickedMarker = null; }
         loadIncidents();
+        await refreshCooldown();
       } catch (err) {
         msg.textContent = err.message;
         msg.className = "error";
+        if (err.cooldown_seconds !== undefined) startCooldown(err.cooldown_seconds);
       }
     });
 
     initMap();
     loadIncidents();
+    refreshCooldown();
+    setInterval(refreshCooldown, 5000);
   </script>
 </body>
 

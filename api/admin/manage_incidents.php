@@ -40,8 +40,11 @@ try {
         $incidentId = $data['incident_id'];
         $status = $data['status'];
 
-        $stmt = $pdo->prepare("UPDATE incidents SET status=? WHERE incident_id=?");
-        $stmt->execute([$status, $incidentId]);
+        $stmt = $pdo->prepare("UPDATE incidents
+            SET resolved_at = CASE WHEN status <> 'resolved' AND ? = 'resolved' THEN CURRENT_TIMESTAMP ELSE resolved_at END,
+                status = ?
+            WHERE incident_id = ?");
+        $stmt->execute([$status, $status, $incidentId]);
 
         $xpAwardedThisCall = 0;
 

@@ -23,7 +23,9 @@ async function apiFetch(endpoint, method = "GET", body = null) {
   if (!res.ok) {
     const message = json.error || "Request failed";
     const details = json.details ? `: ${json.details}` : "";
-    throw new Error(message + details);
+    const error = new Error(message + details);
+    if (json.cooldown_seconds !== undefined) error.cooldown_seconds = json.cooldown_seconds;
+    throw error;
   }
   return json;
 }

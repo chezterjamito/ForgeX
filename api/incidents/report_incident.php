@@ -21,6 +21,23 @@ try {
     }
     $user_id = $_SESSION['user_id'];
 
+    // An accepted report (status = resolved) starts a five-minute reporting
+    // cooldown. Calculate it in MySQL so its clock matches resolved_at.
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $cooldownStmt = $pdo->prepare("SELECT GREATEST(0, 300 - TIMESTAMPDIFF(SECOND, MAX(resolved_at), CURRENT_TIMESTAMP))
+            FROM incidents WHERE reported_by = ? AND resolved_at IS NOT NULL");
+        $cooldownStmt->execute([$user_id]);
+        $remaining = (int) $cooldownStmt->fetchColumn();
+        echo json_encode(["cooldown_seconds" => $remaining]);
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(["error" => "Method not allowed"]);
+        exit;
+    }
+
     $data = json_decode(file_get_contents("php://input"), true);
     if (!is_array($data)) {
         http_response_code(400);
@@ -34,6 +51,19 @@ try {
     if (!$description) {
         http_response_code(400);
         echo json_encode(["error" => "Description is required"]);
+        exit;
+    }
+
+    $cooldownStmt = $pdo->prepare("SELECT GREATEST(0, 300 - TIMESTAMPDIFF(SECOND, MAX(resolved_at), CURRENT_TIMESTAMP))
+        FROM incidents WHERE reported_by = ? AND resolved_at IS NOT NULL");
+    $cooldownStmt->execute([$user_id]);
+    $cooldownSeconds = (int) $cooldownStmt->fetchColumn();
+    if ($cooldownSeconds > 0) {
+        http_response_code(429);
+        echo json_encode([
+            "error" => "You can report another incident after the cooldown.",
+            "cooldown_seconds" => $cooldownSeconds
+        ]);
         exit;
     }
 

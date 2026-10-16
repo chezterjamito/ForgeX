@@ -69,6 +69,8 @@ CREATE TABLE incidents (
     location VARCHAR(150),
     status ENUM('open','investigating','resolved') DEFAULT 'open',
     reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP NULL DEFAULT NULL,
+    xp_verified_awarded TINYINT(1) NOT NULL DEFAULT 0,
     FOREIGN KEY (reported_by) REFERENCES users(user_id),
     FOREIGN KEY (involved_user_id) REFERENCES users(user_id),
     FOREIGN KEY (power_id) REFERENCES powers(power_id)
