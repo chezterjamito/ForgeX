@@ -309,15 +309,7 @@
           latitude: document.getElementById("latitude").value,
           longitude: document.getElementById("longitude").value
         });
-        if (res.xp_awarded > 0) {
-          msg.textContent = `Incident reported (${res.severity} severity) — +${res.xp_awarded} XP now, and up to ${res.pending_verification_xp} more XP once an admin verifies it. Total XP: ${res.total_xp}, Level ${res.new_level}.`;
-        } else if (res.xp_note) {
-          msg.textContent = `Incident reported — ${res.xp_note} It can still earn up to ${res.pending_verification_xp} XP once an admin verifies it.`;
-        } else if (res.pending_verification_xp > 0) {
-          msg.textContent = `Incident reported. It can earn up to ${res.pending_verification_xp} XP once an admin verifies it. (Take the Discovery Quiz to start earning XP from reports.)`;
-        } else {
-          msg.textContent = "Incident reported. (Take the Discovery Quiz to start earning XP from reports.)";
-        }
+        msg.textContent = "Incident submitted. No XP is awarded until an admin accepts the incident.";
         msg.className = "success";
         document.getElementById("reportForm").reset();
         if (pickedMarker) { map.removeLayer(pickedMarker); pickedMarker = null; }

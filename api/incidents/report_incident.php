@@ -12,7 +12,6 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 try {
     session_start();
     require '../config/db.php';
-    require '../config/helpers.php';
 
     if (!isset($_SESSION['user_id'])) {
         http_response_code(401);
@@ -67,13 +66,12 @@ try {
         exit;
     }
 
-    $xpTable = ["low" => 10, "medium" => 25, "high" => 50, "critical" => 100];
-    if (!array_key_exists($severity, $xpTable)) {
+    $validSeverities = ["low", "medium", "high", "critical"];
+    if (!in_array($severity, $validSeverities, true)) {
         http_response_code(400);
         echo json_encode(["error" => "severity must be one of: low, medium, high, critical"]);
         exit;
     }
-    $xpAward = $xpTable[$severity];
 
     // Coordinates are optional — only present if the user allowed browser geolocation
     $latitude = isset($data['latitude']) && $data['latitude'] !== '' ? (float) $data['latitude'] : null;
@@ -95,32 +93,12 @@ try {
     ]);
     $incidentId = $pdo->lastInsertId();
 
-    $powerStmt = $pdo->prepare("SELECT power_id FROM user_powers WHERE user_id = ?");
-    $powerStmt->execute([$user_id]);
-    $power_id = $powerStmt->fetchColumn();
-
-    $newLevel = null;
-    $totalXp = null;
-
-    if ($power_id) {
-        $update = $pdo->prepare("UPDATE user_powers SET xp = xp + ? WHERE user_id = ? AND power_id = ?");
-        $update->execute([$xpAward, $user_id, $power_id]);
-        $newLevel = recalc_level($pdo, $user_id, $power_id);
-
-        $xpStmt = $pdo->prepare("SELECT xp FROM user_powers WHERE user_id = ? AND power_id = ?");
-        $xpStmt->execute([$user_id, $power_id]);
-        $totalXp = (int) $xpStmt->fetchColumn();
-    } else {
-        $xpAward = 0;
-    }
-
     echo json_encode([
         "message" => "Incident reported",
         "incident_id" => $incidentId,
         "severity" => $severity,
-        "xp_awarded" => $xpAward,
-        "total_xp" => $totalXp,
-        "new_level" => $newLevel
+        "xp_awarded" => 0,
+        "xp_pending_admin_acceptance" => true
     ]);
 } catch (Throwable $e) {
     http_response_code(500);
